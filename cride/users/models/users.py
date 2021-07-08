@@ -37,7 +37,7 @@ class User(CRideModel, AbstractUser):
         max_length=17,
         blank=True)
 
-    """This user is client by default""" 
+    """This user is client by default"""
     is_client = models.BooleanField(
         'client status',
         default=True,

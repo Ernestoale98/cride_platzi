@@ -1,14 +1,18 @@
 """Users serializers"""
 
 #Django
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, password_validation
+from django.core.validators import RegexValidator
+
 
 #Django REST Framework
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
+from rest_framework.validators import UniqueValidator
 
 #Models
-from cride.users.models import User
+from cride.users.models import User,Profile
+
 
 class UserModelSerializer(serializers.ModelSerializer):
     """User model serializer"""
@@ -27,6 +31,64 @@ class UserModelSerializer(serializers.ModelSerializer):
 
 
 
+class UserSignUpSerializer(serializers.Serializer):
+    """User sign up serializer"""
+
+    """Emal and user name validations"""
+    email = serializers.EmailField(
+        validators = [
+            UniqueValidator(queryset=User.objects.all())
+        ]
+    )
+    username= serializers.CharField(
+        min_length=3,
+        max_length=20,
+        validators = [
+            UniqueValidator(queryset=User.objects.all())
+        ]
+    )
+
+    """Phone number validations"""
+    phone_regex = RegexValidator(
+        # regex=r'(+?1?\d{9,15}$)',
+        message="Phone number must be entered with correct format"
+    )
+    phone_number = serializers.CharField(
+        validators=[phone_regex]
+    )
+
+    """Password validations"""
+    password = serializers.CharField(min_length=8, max_length=64)
+    password_confirmation = serializers.CharField(min_length=8, max_length=64)
+
+    """Name Validations"""
+    first_name = serializers.CharField(min_length=2, max_length=30)
+    last_name = serializers.CharField(min_length=2, max_length=30)
+
+
+    def validate(self,data):
+        """Check password and password_confirmatio are equals"""
+        if data['password'] != data['password_confirmation']:
+            raise serializers.ValidationError("Passwords doesn't match")
+        password_validation.validate_password(data['password'])
+        return data
+
+
+
+    def create(self,data):
+        data.pop('password_confirmation')
+        user = User.objects.create_user(**data)
+        profile = Profile.objects.create(user=user)
+        return user
+
+
+
+
+
+
+
+
+
 class UserLoginSerializer(serializers.Serializer):
     """User login serializer"""
 
@@ -36,7 +98,7 @@ class UserLoginSerializer(serializers.Serializer):
         max_length=64
     )
 
-    def validation(self,data):
+    def validate(self,data):
         """Check Credentials"""
 
         user = authenticate(
