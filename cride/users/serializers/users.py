@@ -50,7 +50,7 @@ class UserSignUpSerializer(serializers.Serializer):
 
     """Phone number validations"""
     phone_regex = RegexValidator(
-        # regex=r'(+?1?\d{9,15}$)',
+        regex=r'[+?1?\d{9,15}$]',
         message="Phone number must be entered with correct format"
     )
     phone_number = serializers.CharField(
