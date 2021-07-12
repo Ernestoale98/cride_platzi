@@ -3,7 +3,8 @@
 #Django
 from django.contrib.auth import authenticate, password_validation
 from django.core.validators import RegexValidator
-
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
 
 #Django REST Framework
 from rest_framework import serializers
@@ -77,16 +78,33 @@ class UserSignUpSerializer(serializers.Serializer):
 
     def create(self,data):
         data.pop('password_confirmation')
-        user = User.objects.create_user(**data)
-        profile = Profile.objects.create(user=user)
+        user = User.objects.create_user(**data,is_verified=False)
+        Profile.objects.create(user=user)
+        self.send_confirmation_email(user)
         return user
 
 
+    def send_confirmation_email(self,user):
+        """Send email to user email to verify account"""
+        verification_token = self.get_verification_token(user)
+        subject = 'Welcome @{}! Verify your account to start using Comparte Ride'.format(user.username)
+        from_email = 'Comparte Ride <noreply@comparteride.com>'
+        content = render_to_string(
+            'emails/users/account_verification.html',
+            {
+                'token': verification_token,
+                'user': user
+            }
+        )
+        msg = EmailMultiAlternatives(subject,content,from_email,[user.email])
+        msg.attach_alternative(content,"text/html")
+        msg.send()
 
 
 
-
-
+    def get_verification_token(self,user):
+        """Create JWT to verify account"""
+        return 'abc'
 
 
 class UserLoginSerializer(serializers.Serializer):
@@ -107,6 +125,8 @@ class UserLoginSerializer(serializers.Serializer):
         )
         if not user:
             raise serializers.ValidationError('Invalid credentials')
+        if not user.is_verified:
+            raise serializers.ValidationError('Account is not verified')
         self.context['user'] = user
         return data
 
